@@ -17,7 +17,18 @@ const supabase = createClient(
   { auth: { autoRefreshToken: false, persistSession: false } }
 );
 
-app.use(cors());
+const express = require("express");
+const cors = require("cors");
+
+const app = express();
+
+app.use(cors({
+    origin: true,
+    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"]
+}));
+
+app.use(express.json());
 app.use(express.json({ limit: "1mb" }));
 
 const text = v => typeof v === "string" ? v.trim() : v;
