@@ -36,29 +36,39 @@ const supabase = createClient(
    CORS
 ============================ */
 
+/*
+  CORS manual para garantir que os headers
+  sejam enviados também na Vercel.
+*/
+
 app.use((req, res, next) => {
-  res.header(
-    "Access-Control-Allow-Origin",
-    "*"
-  );
+  res.setHeader("Access-Control-Allow-Origin", "*");
 
-  res.header(
+  res.setHeader(
     "Access-Control-Allow-Methods",
-    "GET,POST,PUT,PATCH,DELETE,OPTIONS"
+    "GET, POST, PUT, PATCH, DELETE, OPTIONS"
   );
 
-  res.header(
+  res.setHeader(
     "Access-Control-Allow-Headers",
     "Content-Type, Authorization"
   );
 
+  res.setHeader(
+    "Access-Control-Max-Age",
+    "86400"
+  );
+
   if (req.method === "OPTIONS") {
-    return res.sendStatus(204);
+    return res.status(204).end();
   }
 
   next();
 });
 
+/*
+  Mantemos o middleware cors também.
+*/
 app.use(
   cors({
     origin: "*",
@@ -77,6 +87,10 @@ app.use(
   })
 );
 
+/* ============================
+   JSON
+============================ */
+
 app.use(
   express.json({
     limit: "1mb"
@@ -92,11 +106,7 @@ const text = (v) =>
     ? v.trim()
     : v;
 
-const error = (
-  res,
-  status,
-  message
-) =>
+const error = (res, status, message) =>
   res.status(status).json({
     error: message
   });
@@ -134,6 +144,22 @@ app.get("/api/health", (_req, res) => {
 });
 
 /* ============================
+   TESTE DE CORS
+============================ */
+
+app.get("/api/test-cors", (_req, res) => {
+  res.setHeader(
+    "Access-Control-Allow-Origin",
+    "*"
+  );
+
+  res.json({
+    ok: true,
+    cors: true
+  });
+});
+
+/* ============================
    FAMÍLIAS
 ============================ */
 
@@ -160,25 +186,13 @@ app.get("/api/familias", async (_req, res) => {
 });
 
 app.post("/api/familias", async (req, res) => {
-  const codigo = text(
-    req.body.codigo
-  );
+  const codigo = text(req.body?.codigo);
+  const nome = text(req.body?.nome);
 
-  const nome = text(
-    req.body.nome
-  );
-
-  const e = code(
-    codigo,
-    "codigo"
-  );
+  const e = code(codigo, "codigo");
 
   if (e) {
-    return error(
-      res,
-      400,
-      e
-    );
+    return error(res, 400, e);
   }
 
   if (!nome) {
@@ -245,11 +259,7 @@ app.get("/api/tipos", async (req, res) => {
   );
 
   if (e) {
-    return error(
-      res,
-      400,
-      e
-    );
+    return error(res, 400, e);
   }
 
   const {
@@ -258,10 +268,7 @@ app.get("/api/tipos", async (req, res) => {
   } = await supabase
     .from("familias")
     .select("id")
-    .eq(
-      "codigo",
-      familiaCodigo
-    )
+    .eq("codigo", familiaCodigo)
     .maybeSingle();
 
   if (familiaError) {
@@ -290,10 +297,7 @@ app.get("/api/tipos", async (req, res) => {
     .select(
       "id,familia_id,codigo,nome"
     )
-    .eq(
-      "familia_id",
-      familia.id
-    )
+    .eq("familia_id", familia.id)
     .order("codigo");
 
   if (dbError) {
@@ -311,15 +315,15 @@ app.get("/api/tipos", async (req, res) => {
 
 app.post("/api/tipos", async (req, res) => {
   const familiaCodigo = text(
-    req.body.familia_codigo
+    req.body?.familia_codigo
   );
 
   const codigo = text(
-    req.body.codigo
+    req.body?.codigo
   );
 
   const nome = text(
-    req.body.nome
+    req.body?.nome
   );
 
   let e = code(
@@ -328,24 +332,13 @@ app.post("/api/tipos", async (req, res) => {
   );
 
   if (e) {
-    return error(
-      res,
-      400,
-      e
-    );
+    return error(res, 400, e);
   }
 
-  e = code(
-    codigo,
-    "codigo"
-  );
+  e = code(codigo, "codigo");
 
   if (e) {
-    return error(
-      res,
-      400,
-      e
-    );
+    return error(res, 400, e);
   }
 
   if (!nome) {
@@ -362,10 +355,7 @@ app.post("/api/tipos", async (req, res) => {
   } = await supabase
     .from("familias")
     .select("id")
-    .eq(
-      "codigo",
-      familiaCodigo
-    )
+    .eq("codigo", familiaCodigo)
     .maybeSingle();
 
   if (familiaError) {
@@ -436,20 +426,14 @@ app.get("/api/produtos", async (req, res) => {
   let query = supabase
     .from("produtos")
     .select("*")
-    .order(
-      "created_at",
-      {
-        ascending: false
-      }
-    );
+    .order("created_at", {
+      ascending: false
+    });
 
   if (busca) {
     const termo = busca
       .slice(0, 100)
-      .replace(
-        /[%(),]/g,
-        ""
-      );
+      .replace(/[%(),]/g, "");
 
     query = query.or(
       `sku.ilike.%${termo}%,nome.ilike.%${termo}%,localizacao.ilike.%${termo}%`
@@ -482,9 +466,7 @@ app.get(
     );
 
     if (
-      !/^\d{3}\.\d{3}\.\d{4}$/.test(
-        sku
-      )
+      !/^\d{3}\.\d{3}\.\d{4}$/.test(sku)
     ) {
       return error(
         res,
@@ -528,31 +510,31 @@ app.post(
   "/api/produtos",
   async (req, res) => {
     const familiaCodigo = text(
-      req.body.familia_codigo
+      req.body?.familia_codigo
     );
 
     const tipoCodigo = text(
-      req.body.tipo_codigo
+      req.body?.tipo_codigo
     );
 
     const nome = text(
-      req.body.nome
+      req.body?.nome
     );
 
     const descricao = text(
-      req.body.descricao || ""
+      req.body?.descricao || ""
     );
 
     const localizacao = text(
-      req.body.localizacao
+      req.body?.localizacao
     );
 
     const quantidade = Number(
-      req.body.quantidade ?? 0
+      req.body?.quantidade ?? 0
     );
 
     const estoqueMinimo = Number(
-      req.body.estoque_minimo ?? 1
+      req.body?.estoque_minimo ?? 1
     );
 
     let e = code(
@@ -561,11 +543,7 @@ app.post(
     );
 
     if (e) {
-      return error(
-        res,
-        400,
-        e
-      );
+      return error(res, 400, e);
     }
 
     e = code(
@@ -574,11 +552,7 @@ app.post(
     );
 
     if (e) {
-      return error(
-        res,
-        400,
-        e
-      );
+      return error(res, 400, e);
     }
 
     if (!nome) {
@@ -603,11 +577,7 @@ app.post(
     );
 
     if (e) {
-      return error(
-        res,
-        400,
-        e
-      );
+      return error(res, 400, e);
     }
 
     e = nonNegative(
@@ -616,11 +586,7 @@ app.post(
     );
 
     if (e) {
-      return error(
-        res,
-        400,
-        e
-      );
+      return error(res, 400, e);
     }
 
     const {
@@ -631,16 +597,22 @@ app.post(
       {
         p_familia_codigo:
           familiaCodigo,
+
         p_tipo_codigo:
           tipoCodigo,
+
         p_nome:
           nome,
+
         p_descricao:
           descricao || null,
+
         p_localizacao:
           localizacao,
+
         p_quantidade:
           quantidade,
+
         p_estoque_minimo:
           estoqueMinimo
       }
@@ -694,26 +666,24 @@ async function movimentacao(
   tipo
 ) {
   const sku = text(
-    req.body.produto_sku
+    req.body?.produto_sku
   );
 
   const quantidade = Number(
-    req.body.quantidade
+    req.body?.quantidade
   );
 
   const responsavel = text(
-    req.body.responsavel
+    req.body?.responsavel
   );
 
   const motivo = text(
-    req.body.motivo || ""
+    req.body?.motivo || ""
   );
 
   if (
     !sku ||
-    !/^\d{3}\.\d{3}\.\d{4}$/.test(
-      sku
-    )
+    !/^\d{3}\.\d{3}\.\d{4}$/.test(sku)
   ) {
     return error(
       res,
@@ -728,11 +698,7 @@ async function movimentacao(
   );
 
   if (e) {
-    return error(
-      res,
-      400,
-      e
-    );
+    return error(res, 400, e);
   }
 
   if (!responsavel) {
@@ -763,10 +729,8 @@ async function movimentacao(
       p_produto_sku: sku,
       p_tipo_movimentacao: tipo,
       p_quantidade: quantidade,
-      p_responsavel:
-        responsavel,
-      p_motivo:
-        motivo || null
+      p_responsavel: responsavel,
+      p_motivo: motivo || null
     }
   );
 
@@ -810,10 +774,8 @@ async function movimentacao(
       : data;
 
   res.status(201).json({
-    produto:
-      result?.produto,
-    movimentacao:
-      result?.movimentacao
+    produto: result?.produto,
+    movimentacao: result?.movimentacao
   });
 }
 
@@ -848,16 +810,11 @@ app.get(
       data,
       error: dbError
     } = await supabase
-      .from(
-        "relatorio_movimentacoes"
-      )
+      .from("relatorio_movimentacoes")
       .select("*")
-      .order(
-        "created_at",
-        {
-          ascending: false
-        }
-      );
+      .order("created_at", {
+        ascending: false
+      });
 
     if (dbError) {
       console.error(dbError);
@@ -887,18 +844,37 @@ app.use(
 );
 
 /* ============================
+   TRATAMENTO DE ERRO
+============================ */
+
+app.use(
+  (err, _req, res, _next) => {
+    console.error(err);
+
+    res.status(500).json({
+      error: "Erro interno do servidor"
+    });
+  }
+);
+
+/* ============================
    SERVIDOR LOCAL
 ============================ */
 
 if (require.main === module) {
   app.listen(
     PORT,
-    () =>
+    () => {
       console.log(
         `API em http://localhost:${PORT}`
-      )
+      );
+    }
   );
 }
+
+/* ============================
+   EXPORTAÇÃO
+============================ */
 
 module.exports = {
   app
