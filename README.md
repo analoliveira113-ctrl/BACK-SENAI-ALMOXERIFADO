@@ -27,7 +27,7 @@ BACK-SENAI-ALMOXERIFADO/
 ## ⚙️ Instalação
 
 ```bash
-git clone <URL_DO_REPOSITORIO>
+git clone <https://github.com/analoliveira113-ctrl/BACK-SENAI-ALMOXERIFADO.git>
 cd BACK-SENAI-ALMOXERIFADO
 npm install
 ```
