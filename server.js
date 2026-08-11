@@ -7,9 +7,19 @@ const { createClient } = require("@supabase/supabase-js");
 const app = express();
 const PORT = Number(process.env.PORT || 3000);
 
+/* ============================
+   VARIÁVEIS DE AMBIENTE
+============================ */
+
 if (!process.env.SUPABASE_URL || !process.env.SUPABASE_KEY) {
-  throw new Error("SUPABASE_URL e SUPABASE_KEY são obrigatórios no .env");
+  throw new Error(
+    "SUPABASE_URL e SUPABASE_KEY são obrigatórios no .env"
+  );
 }
+
+/* ============================
+   SUPABASE
+============================ */
 
 const supabase = createClient(
   process.env.SUPABASE_URL,
@@ -26,38 +36,88 @@ const supabase = createClient(
    CORS
 ============================ */
 
-app.use(cors({
-  origin: true,
-  methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-  allowedHeaders: ["Content-Type", "Authorization"]
-}));
+app.use((req, res, next) => {
+  res.header(
+    "Access-Control-Allow-Origin",
+    "*"
+  );
 
-app.use(express.json({ limit: "1mb" }));
+  res.header(
+    "Access-Control-Allow-Methods",
+    "GET,POST,PUT,PATCH,DELETE,OPTIONS"
+  );
+
+  res.header(
+    "Access-Control-Allow-Headers",
+    "Content-Type, Authorization"
+  );
+
+  if (req.method === "OPTIONS") {
+    return res.sendStatus(204);
+  }
+
+  next();
+});
+
+app.use(
+  cors({
+    origin: "*",
+    methods: [
+      "GET",
+      "POST",
+      "PUT",
+      "PATCH",
+      "DELETE",
+      "OPTIONS"
+    ],
+    allowedHeaders: [
+      "Content-Type",
+      "Authorization"
+    ]
+  })
+);
+
+app.use(
+  express.json({
+    limit: "1mb"
+  })
+);
 
 /* ============================
    FUNÇÕES AUXILIARES
 ============================ */
 
-const text = v =>
-  typeof v === "string" ? v.trim() : v;
+const text = (v) =>
+  typeof v === "string"
+    ? v.trim()
+    : v;
 
-const error = (res, status, message) =>
-  res.status(status).json({ error: message });
+const error = (
+  res,
+  status,
+  message
+) =>
+  res.status(status).json({
+    error: message
+  });
 
 function code(v, field) {
-  return typeof v === "string" && /^\d{3}$/.test(v)
+  return typeof v === "string" &&
+    /^\d{3}$/.test(v)
     ? null
     : `${field} deve possuir exatamente 3 dígitos`;
 }
 
 function positive(v, field) {
-  return Number.isInteger(Number(v)) && Number(v) > 0
+  return Number.isInteger(Number(v)) &&
+    Number(v) > 0
     ? null
     : `${field} deve ser um inteiro maior que zero`;
 }
 
 function nonNegative(v, field) {
-  return Number.isInteger(Number(v)) && Number(v) >= 0
+  return Number.isInteger(Number(v)) &&
+    Number(v) >= 0
     ? null
     : `${field} deve ser um inteiro maior ou igual a zero`;
 }
@@ -78,34 +138,61 @@ app.get("/api/health", (_req, res) => {
 ============================ */
 
 app.get("/api/familias", async (_req, res) => {
-  const { data, error: dbError } = await supabase
+  const {
+    data,
+    error: dbError
+  } = await supabase
     .from("familias")
     .select("id,codigo,nome")
     .order("codigo");
 
   if (dbError) {
     console.error(dbError);
-    return error(res, 500, "Erro ao listar famílias");
+
+    return error(
+      res,
+      500,
+      "Erro ao listar famílias"
+    );
   }
 
   res.json(data);
 });
 
 app.post("/api/familias", async (req, res) => {
-  const codigo = text(req.body.codigo);
-  const nome = text(req.body.nome);
+  const codigo = text(
+    req.body.codigo
+  );
 
-  const e = code(codigo, "codigo");
+  const nome = text(
+    req.body.nome
+  );
+
+  const e = code(
+    codigo,
+    "codigo"
+  );
 
   if (e) {
-    return error(res, 400, e);
+    return error(
+      res,
+      400,
+      e
+    );
   }
 
   if (!nome) {
-    return error(res, 400, "Nome da família é obrigatório");
+    return error(
+      res,
+      400,
+      "Nome da família é obrigatório"
+    );
   }
 
-  const { data, error: dbError } = await supabase
+  const {
+    data,
+    error: dbError
+  } = await supabase
     .from("familias")
     .insert({
       codigo,
@@ -140,7 +227,9 @@ app.post("/api/familias", async (req, res) => {
 ============================ */
 
 app.get("/api/tipos", async (req, res) => {
-  const familiaCodigo = text(req.query.familia_codigo);
+  const familiaCodigo = text(
+    req.query.familia_codigo
+  );
 
   if (!familiaCodigo) {
     return error(
@@ -156,7 +245,11 @@ app.get("/api/tipos", async (req, res) => {
   );
 
   if (e) {
-    return error(res, 400, e);
+    return error(
+      res,
+      400,
+      e
+    );
   }
 
   const {
@@ -165,7 +258,10 @@ app.get("/api/tipos", async (req, res) => {
   } = await supabase
     .from("familias")
     .select("id")
-    .eq("codigo", familiaCodigo)
+    .eq(
+      "codigo",
+      familiaCodigo
+    )
     .maybeSingle();
 
   if (familiaError) {
@@ -191,8 +287,13 @@ app.get("/api/tipos", async (req, res) => {
     error: dbError
   } = await supabase
     .from("tipos")
-    .select("id,familia_id,codigo,nome")
-    .eq("familia_id", familia.id)
+    .select(
+      "id,familia_id,codigo,nome"
+    )
+    .eq(
+      "familia_id",
+      familia.id
+    )
     .order("codigo");
 
   if (dbError) {
@@ -213,8 +314,13 @@ app.post("/api/tipos", async (req, res) => {
     req.body.familia_codigo
   );
 
-  const codigo = text(req.body.codigo);
-  const nome = text(req.body.nome);
+  const codigo = text(
+    req.body.codigo
+  );
+
+  const nome = text(
+    req.body.nome
+  );
 
   let e = code(
     familiaCodigo,
@@ -222,13 +328,24 @@ app.post("/api/tipos", async (req, res) => {
   );
 
   if (e) {
-    return error(res, 400, e);
+    return error(
+      res,
+      400,
+      e
+    );
   }
 
-  e = code(codigo, "codigo");
+  e = code(
+    codigo,
+    "codigo"
+  );
 
   if (e) {
-    return error(res, 400, e);
+    return error(
+      res,
+      400,
+      e
+    );
   }
 
   if (!nome) {
@@ -245,7 +362,10 @@ app.post("/api/tipos", async (req, res) => {
   } = await supabase
     .from("familias")
     .select("id")
-    .eq("codigo", familiaCodigo)
+    .eq(
+      "codigo",
+      familiaCodigo
+    )
     .maybeSingle();
 
   if (familiaError) {
@@ -276,7 +396,9 @@ app.post("/api/tipos", async (req, res) => {
       codigo,
       nome
     })
-    .select("id,familia_id,codigo,nome")
+    .select(
+      "id,familia_id,codigo,nome"
+    )
     .single();
 
   if (dbError) {
@@ -314,14 +436,20 @@ app.get("/api/produtos", async (req, res) => {
   let query = supabase
     .from("produtos")
     .select("*")
-    .order("created_at", {
-      ascending: false
-    });
+    .order(
+      "created_at",
+      {
+        ascending: false
+      }
+    );
 
   if (busca) {
     const termo = busca
       .slice(0, 100)
-      .replace(/[%(),]/g, "");
+      .replace(
+        /[%(),]/g,
+        ""
+      );
 
     query = query.or(
       `sku.ilike.%${termo}%,nome.ilike.%${termo}%,localizacao.ilike.%${termo}%`
@@ -346,175 +474,215 @@ app.get("/api/produtos", async (req, res) => {
   res.json(data);
 });
 
-app.get("/api/produtos/:sku", async (req, res) => {
-  const sku = text(req.params.sku);
-
-  if (!/^\d{3}\.\d{3}\.\d{4}$/.test(sku)) {
-    return error(
-      res,
-      400,
-      "SKU inválido"
+app.get(
+  "/api/produtos/:sku",
+  async (req, res) => {
+    const sku = text(
+      req.params.sku
     );
-  }
-
-  const {
-    data,
-    error: dbError
-  } = await supabase
-    .from("produtos")
-    .select("*")
-    .eq("sku", sku)
-    .maybeSingle();
-
-  if (dbError) {
-    console.error(dbError);
-
-    return error(
-      res,
-      500,
-      "Erro ao consultar produto"
-    );
-  }
-
-  if (!data) {
-    return error(
-      res,
-      404,
-      "Produto não encontrado"
-    );
-  }
-
-  res.json(data);
-});
-
-app.post("/api/produtos", async (req, res) => {
-  const familiaCodigo = text(
-    req.body.familia_codigo
-  );
-
-  const tipoCodigo = text(
-    req.body.tipo_codigo
-  );
-
-  const nome = text(req.body.nome);
-
-  const descricao = text(
-    req.body.descricao || ""
-  );
-
-  const localizacao = text(
-    req.body.localizacao
-  );
-
-  const quantidade = Number(
-    req.body.quantidade ?? 0
-  );
-
-  const estoqueMinimo = Number(
-    req.body.estoque_minimo ?? 1
-  );
-
-  let e = code(
-    familiaCodigo,
-    "familia_codigo"
-  );
-
-  if (e) {
-    return error(res, 400, e);
-  }
-
-  e = code(tipoCodigo, "tipo_codigo");
-
-  if (e) {
-    return error(res, 400, e);
-  }
-
-  if (!nome) {
-    return error(
-      res,
-      400,
-      "Nome do produto é obrigatório"
-    );
-  }
-
-  if (!localizacao) {
-    return error(
-      res,
-      400,
-      "Localização é obrigatória"
-    );
-  }
-
-  e = nonNegative(
-    quantidade,
-    "quantidade"
-  );
-
-  if (e) {
-    return error(res, 400, e);
-  }
-
-  e = nonNegative(
-    estoqueMinimo,
-    "estoque_minimo"
-  );
-
-  if (e) {
-    return error(res, 400, e);
-  }
-
-  const {
-    data,
-    error: dbError
-  } = await supabase.rpc(
-    "criar_produto",
-    {
-      p_familia_codigo: familiaCodigo,
-      p_tipo_codigo: tipoCodigo,
-      p_nome: nome,
-      p_descricao: descricao || null,
-      p_localizacao: localizacao,
-      p_quantidade: quantidade,
-      p_estoque_minimo: estoqueMinimo
-    }
-  );
-
-  if (dbError) {
-    console.error(dbError);
 
     if (
-      dbError.message.includes(
-        "Família não encontrada"
+      !/^\d{3}\.\d{3}\.\d{4}$/.test(
+        sku
       )
     ) {
       return error(
         res,
-        404,
-        "Família não encontrada"
+        400,
+        "SKU inválido"
       );
     }
 
-    if (
-      dbError.message.includes(
-        "Tipo não encontrado"
-      )
-    ) {
+    const {
+      data,
+      error: dbError
+    } = await supabase
+      .from("produtos")
+      .select("*")
+      .eq("sku", sku)
+      .maybeSingle();
+
+    if (dbError) {
+      console.error(dbError);
+
+      return error(
+        res,
+        500,
+        "Erro ao consultar produto"
+      );
+    }
+
+    if (!data) {
       return error(
         res,
         404,
-        "Tipo não encontrado para essa família"
+        "Produto não encontrado"
       );
     }
 
-    return error(
-      res,
-      500,
-      "Erro ao cadastrar produto"
-    );
+    res.json(data);
   }
+);
 
-  res.status(201).json(data);
-});
+app.post(
+  "/api/produtos",
+  async (req, res) => {
+    const familiaCodigo = text(
+      req.body.familia_codigo
+    );
+
+    const tipoCodigo = text(
+      req.body.tipo_codigo
+    );
+
+    const nome = text(
+      req.body.nome
+    );
+
+    const descricao = text(
+      req.body.descricao || ""
+    );
+
+    const localizacao = text(
+      req.body.localizacao
+    );
+
+    const quantidade = Number(
+      req.body.quantidade ?? 0
+    );
+
+    const estoqueMinimo = Number(
+      req.body.estoque_minimo ?? 1
+    );
+
+    let e = code(
+      familiaCodigo,
+      "familia_codigo"
+    );
+
+    if (e) {
+      return error(
+        res,
+        400,
+        e
+      );
+    }
+
+    e = code(
+      tipoCodigo,
+      "tipo_codigo"
+    );
+
+    if (e) {
+      return error(
+        res,
+        400,
+        e
+      );
+    }
+
+    if (!nome) {
+      return error(
+        res,
+        400,
+        "Nome do produto é obrigatório"
+      );
+    }
+
+    if (!localizacao) {
+      return error(
+        res,
+        400,
+        "Localização é obrigatória"
+      );
+    }
+
+    e = nonNegative(
+      quantidade,
+      "quantidade"
+    );
+
+    if (e) {
+      return error(
+        res,
+        400,
+        e
+      );
+    }
+
+    e = nonNegative(
+      estoqueMinimo,
+      "estoque_minimo"
+    );
+
+    if (e) {
+      return error(
+        res,
+        400,
+        e
+      );
+    }
+
+    const {
+      data,
+      error: dbError
+    } = await supabase.rpc(
+      "criar_produto",
+      {
+        p_familia_codigo:
+          familiaCodigo,
+        p_tipo_codigo:
+          tipoCodigo,
+        p_nome:
+          nome,
+        p_descricao:
+          descricao || null,
+        p_localizacao:
+          localizacao,
+        p_quantidade:
+          quantidade,
+        p_estoque_minimo:
+          estoqueMinimo
+      }
+    );
+
+    if (dbError) {
+      console.error(dbError);
+
+      if (
+        dbError.message.includes(
+          "Família não encontrada"
+        )
+      ) {
+        return error(
+          res,
+          404,
+          "Família não encontrada"
+        );
+      }
+
+      if (
+        dbError.message.includes(
+          "Tipo não encontrado"
+        )
+      ) {
+        return error(
+          res,
+          404,
+          "Tipo não encontrado para essa família"
+        );
+      }
+
+      return error(
+        res,
+        500,
+        "Erro ao cadastrar produto"
+      );
+    }
+
+    res.status(201).json(data);
+  }
+);
 
 /* ============================
    MOVIMENTAÇÕES
@@ -543,7 +711,9 @@ async function movimentacao(
 
   if (
     !sku ||
-    !/^\d{3}\.\d{3}\.\d{4}$/.test(sku)
+    !/^\d{3}\.\d{3}\.\d{4}$/.test(
+      sku
+    )
   ) {
     return error(
       res,
@@ -558,7 +728,11 @@ async function movimentacao(
   );
 
   if (e) {
-    return error(res, 400, e);
+    return error(
+      res,
+      400,
+      e
+    );
   }
 
   if (!responsavel) {
@@ -589,8 +763,10 @@ async function movimentacao(
       p_produto_sku: sku,
       p_tipo_movimentacao: tipo,
       p_quantidade: quantidade,
-      p_responsavel: responsavel,
-      p_motivo: motivo || null
+      p_responsavel:
+        responsavel,
+      p_motivo:
+        motivo || null
     }
   );
 
@@ -628,13 +804,16 @@ async function movimentacao(
     );
   }
 
-  const result = Array.isArray(data)
-    ? data[0]
-    : data;
+  const result =
+    Array.isArray(data)
+      ? data[0]
+      : data;
 
   res.status(201).json({
-    produto: result?.produto,
-    movimentacao: result?.movimentacao
+    produto:
+      result?.produto,
+    movimentacao:
+      result?.movimentacao
   });
 }
 
@@ -662,40 +841,49 @@ app.post(
    HISTÓRICO
 ============================ */
 
-app.get("/api/historico", async (_req, res) => {
-  const {
-    data,
-    error: dbError
-  } = await supabase
-    .from("relatorio_movimentacoes")
-    .select("*")
-    .order("created_at", {
-      ascending: false
-    });
+app.get(
+  "/api/historico",
+  async (_req, res) => {
+    const {
+      data,
+      error: dbError
+    } = await supabase
+      .from(
+        "relatorio_movimentacoes"
+      )
+      .select("*")
+      .order(
+        "created_at",
+        {
+          ascending: false
+        }
+      );
 
-  if (dbError) {
-    console.error(dbError);
+    if (dbError) {
+      console.error(dbError);
 
-    return error(
-      res,
-      500,
-      "Erro ao consultar histórico"
-    );
+      return error(
+        res,
+        500,
+        "Erro ao consultar histórico"
+      );
+    }
+
+    res.json(data);
   }
-
-  res.json(data);
-});
+);
 
 /* ============================
    ROTA NÃO ENCONTRADA
 ============================ */
 
-app.use((_req, res) =>
-  error(
-    res,
-    404,
-    "Rota não encontrada"
-  )
+app.use(
+  (_req, res) =>
+    error(
+      res,
+      404,
+      "Rota não encontrada"
+    )
 );
 
 /* ============================
@@ -712,4 +900,6 @@ if (require.main === module) {
   );
 }
 
-module.exports = { app };
+module.exports = {
+  app
+};
